@@ -24,31 +24,38 @@ type User struct {
 
 func main() {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
+	e.GET("/", handleHello)
+	e.POST("/users", createUserHandler)
 	e.Logger.Fatal(e.Start(":1323"))
+}
 
-	ctx := context.Background()
+func handleHello(c echo.Context) error {
+	return c.String(http.StatusOK, "Hello, World!")
+}
+
+func createUserHandler(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	// ctx := context.Background()
+
+	// データベース接続の確立
 	xdb, cleanup, err := connectDB(ctx)
 	if err != nil {
 		slog.Error(err.Error())
-		return
+		return err
 	}
 	defer cleanup()
 
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		slog.Error(err.Error())
-		return
+		return err
 	}
 	fmt.Printf("生成されたUUIDv7: %s\n", uuid.String())
 	email := fmt.Sprintf("example+%v@example.com", rand.Intn(100))
-	// TODO: idはUUIDを自動発番できるようにする
 	user := User{
-		id:   uuid, // 例としてUUIDを使用
-		name: "うんち💩",
-		// emailの「+」数値をランダムにしたい。
+		id:       uuid, // 例としてUUIDを使用
+		name:     "うんち💩",
 		email:    email,
 		password: "securepassword",
 	}
@@ -57,8 +64,11 @@ func main() {
 	fmt.Printf("%+v\n", result)
 	if err != nil {
 		slog.Error(err.Error())
-		return
+		return err
 	}
+
+	rowsAffected, _ := result.RowsAffected()
+	return c.String(http.StatusOK, fmt.Sprintf("ユーザーが作成されました。作成した数: %d", rowsAffected))
 }
 
 // connectDB はDBに接続する
