@@ -22,9 +22,20 @@ type User struct {
 }
 
 func main() {
+	ctx := context.Background()
+	// データベース接続の確立
+	xdb, cleanup, err := connectDB(ctx)
+	if err != nil {
+		fmt.Printf("データベース接続エラー: %v\n", err)
+		return
+	}
+	defer cleanup()
+
 	e := echo.New()
 	e.GET("/", handleHello)
-	e.POST("/users", createUserHandler)
+	e.POST("/users", func(c echo.Context) error {
+		return createUserHandler(c, xdb)
+	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
@@ -32,16 +43,7 @@ func handleHello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
 
-func createUserHandler(c echo.Context) error {
-	ctx := c.Request().Context()
-
-	// データベース接続の確立
-	xdb, cleanup, err := connectDB(ctx)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
+func createUserHandler(c echo.Context, xdb *sqlx.DB) error {
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		return err
