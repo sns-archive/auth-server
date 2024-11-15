@@ -63,6 +63,13 @@ func main() {
 }
 
 func insertUsers(db *sqlx.DB, user User) (sql.Result, error) {
-	sql := `INSERT INTO users (id, username, email, password) VALUES (?, ?, ?, ?)`
+	// NOTE: 一旦ID固定にするため、冪等な処理にしたいのでUpsertにする
+	sql := `INSERT INTO users (id, username, email, password)
+					VALUES
+					(?, ?, ?, ?)
+					ON DUPLICATE KEY UPDATE
+					username = VALUES(username),
+					email = VALUES(email),
+					password = VALUES(password);`
 	return db.Exec(sql, user.id, user.name, user.email, user.password)
 }
