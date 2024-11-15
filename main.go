@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -20,12 +21,6 @@ type User struct {
 }
 
 func main() {
-	helloStruct := User{
-		name: "うんち💩",
-	}
-	// NOTE: +vでvalueだけでなく、keyも表示できる
-	fmt.Printf("%+v\n", helloStruct)
-
 	ctx := context.Background()
 	xdb, cleanup, err := connectDB(ctx)
 	if err != nil {
@@ -40,11 +35,13 @@ func main() {
 		return
 	}
 	fmt.Printf("生成されたUUIDv7: %s\n", uuid.String())
+	email := fmt.Sprintf("example+%v@example.com", rand.Intn(100))
 	// TODO: idはUUIDを自動発番できるようにする
 	user := User{
-		id:       uuid, // 例としてUUIDを使用
-		name:     "うんち💩",
-		email:    "example + 1@example.com",
+		id:   uuid, // 例としてUUIDを使用
+		name: "うんち💩",
+		// emailの「+」数値をランダムにしたい。
+		email:    email,
 		password: "securepassword",
 	}
 
