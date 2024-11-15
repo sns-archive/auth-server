@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"math/rand"
 	"net/http"
 	"time"
@@ -39,14 +38,12 @@ func createUserHandler(c echo.Context) error {
 	// データベース接続の確立
 	xdb, cleanup, err := connectDB(ctx)
 	if err != nil {
-		slog.Error(err.Error())
 		return err
 	}
 	defer cleanup()
 
 	uuid, err := uuid.NewV7()
 	if err != nil {
-		slog.Error(err.Error())
 		return err
 	}
 	fmt.Printf("生成されたUUIDv7: %s\n", uuid.String())
@@ -61,7 +58,6 @@ func createUserHandler(c echo.Context) error {
 	result, err := insertUsers(xdb, user)
 	fmt.Printf("%+v\n", result)
 	if err != nil {
-		slog.Error(err.Error())
 		return err
 	}
 
