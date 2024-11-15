@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"net/http"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 )
 
 type User struct {
@@ -21,6 +23,12 @@ type User struct {
 }
 
 func main() {
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, World!")
+	})
+	e.Logger.Fatal(e.Start(":1323"))
+
 	ctx := context.Background()
 	xdb, cleanup, err := connectDB(ctx)
 	if err != nil {
