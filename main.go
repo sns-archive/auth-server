@@ -36,8 +36,6 @@ func handleHello(c echo.Context) error {
 func createUserHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	// ctx := context.Background()
-
 	// データベース接続の確立
 	xdb, cleanup, err := connectDB(ctx)
 	if err != nil {
