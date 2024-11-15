@@ -1,5 +1,5 @@
 CREATE TABLE users (
-  id CHAR(36) PRIMARY KEY,
+  id BINARY(16) PRIMARY KEY,
   username VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   -- 後で暗号化して保存する

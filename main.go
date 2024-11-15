@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
 type User struct {
-	id       string
+	id       uuid.UUID
 	name     string
 	email    string
 	password string
@@ -33,9 +34,15 @@ func main() {
 	}
 	defer cleanup()
 
+	uuid, err := uuid.NewV7()
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
+	fmt.Printf("生成されたUUIDv7: %s\n", uuid.String())
 	// TODO: idはUUIDを自動発番できるようにする
 	user := User{
-		id:       "123e4567-e89b-12d3-a456-426614174001", // 例としてUUIDを使用
+		id:       uuid, // 例としてUUIDを使用
 		name:     "うんち💩",
 		email:    "example + 1@example.com",
 		password: "securepassword",
@@ -62,18 +69,14 @@ func connectDB(ctx context.Context) (*sqlx.DB, func(), error) {
 	}
 	xdb, err := sqlx.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cannot open db: %w", err)
 	}
 	// 接続確認するため
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	// Timeoutタイマーを終了する
 	defer cancel()
-	// 2秒待つ
-	time.Sleep(2 * time.Second)
 	if err := xdb.PingContext(ctx); err != nil {
-		fmt.Printf("%+v\n", "timeoutしたかもよ")
-		fmt.Println("timeout だよ", err.Error())
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cannot ping: %w", err)
 	}
 	// NOTE: goでは、慣習的に使用しない返り値は「_」に格納する必要がある。
 	return xdb, func() { _ = xdb.Close() }, nil
@@ -83,7 +86,7 @@ func insertUsers(db *sqlx.DB, user User) (sql.Result, error) {
 	// NOTE: 一旦ID固定にするため、冪等な処理にしたいのでUpsertにする
 	sql := `INSERT INTO users (id, username, email, password)
 					VALUES
-					(?, ?, ?, ?)
+					(UUID_TO_BIN(?, 1), ?, ?, ?)
 					ON DUPLICATE KEY UPDATE
 					username = VALUES(username),
 					email = VALUES(email),
