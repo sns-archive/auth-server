@@ -25,6 +25,10 @@ func main() {
 	repo := repository.NewRepo()
 	e := echo.New()
 	e.GET("/", handleHello)
+	e.GET("/users", func(c echo.Context) error {
+		return getAllUsersHandler(c, xdb, repo)
+	})
+	// TODO: リクエストボディ受け取れるようにする
 	e.POST("/users", func(c echo.Context) error {
 		return createUserHandler(c, xdb, repo)
 	})
@@ -33,6 +37,14 @@ func main() {
 
 func handleHello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
+}
+
+func getAllUsersHandler(c echo.Context, xdb *sqlx.DB, repo repository.Repositorier) error {
+	users, err := repo.GetAllUsers(xdb)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, users)
 }
 
 func createUserHandler(c echo.Context, xdb *sqlx.DB, repo repository.Repositorier) error {
