@@ -1,65 +1,72 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-	"log/slog"
+	"math/rand"
+	"net/http"
 
-	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
+	"github.com/sns-archive/jwt-auth-server/repository"
 )
 
-type User struct {
-	id       string
-	name     string
-	email    string
-	password string
+func main() {
+	ctx := context.Background()
+	// データベース接続の確立
+	xdb, cleanup, err := repository.ConnectDB(ctx)
+	if err != nil {
+		fmt.Printf("データベース接続エラー: %v\n", err)
+		return
+	}
+	defer cleanup()
+
+	repo := repository.NewRepo()
+	e := echo.New()
+	e.GET("/", handleHello)
+	e.GET("/users", func(c echo.Context) error {
+		return getAllUsersHandler(c, xdb, repo)
+	})
+	// TODO: リクエストボディ受け取れるようにする
+	e.POST("/users", func(c echo.Context) error {
+		return createUserHandler(c, xdb, repo)
+	})
+	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func main() {
-	helloStruct := User{
-		name: "うんち💩",
-	}
-	// NOTE: +vでvalueだけでなく、keyも表示できる
-	fmt.Printf("%+v\n", helloStruct)
+func handleHello(c echo.Context) error {
+	return c.String(http.StatusOK, "Hello, World!")
+}
 
-	cfg := mysql.Config{
-		User:                 "root",
-		Passwd:               "root",
-		Addr:                 fmt.Sprintf("%s:%d", "127.0.0.1", 3307), // 127.0.01:3306
-		DBName:               "sns_archive_jwt",
-		ParseTime:            true,
-		Net:                  "tcp",
-		AllowNativePasswords: true,
-	}
-
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+func getAllUsersHandler(c echo.Context, xdb *sqlx.DB, repo repository.Repositorier) error {
+	users, err := repo.GetAllUsers(xdb)
 	if err != nil {
-		slog.Error(err.Error())
-		return
+		return err
 	}
-	// 接続確認するため
-	if err := db.Ping(); err != nil {
-		slog.Error(err.Error())
-		return
+	return c.JSON(http.StatusOK, users)
+}
+
+func createUserHandler(c echo.Context, xdb *sqlx.DB, repo repository.Repositorier) error {
+	uuid, err := uuid.NewV7()
+	if err != nil {
+		return err
 	}
-	xdb := sqlx.NewDb(db, "mysql")
-	defer db.Close()
+	fmt.Printf("生成されたUUIDv7: %s\n", uuid.String())
+	email := fmt.Sprintf("example+%v@example.com", rand.Intn(100))
+	user := repository.User{
+		Id:       uuid, // 例としてUUIDを使用
+		Name:     "うんち💩",
+		Email:    email,
+		Password: "securepassword",
+	}
 
-	sql := `INSERT INTO users (id, username, email, password) VALUES (?, ?, ?, ?)`
-
-	id := "123e4567-e89b-12d3-a456-426614174000" // 例としてUUIDを使用
-	name := "うんち💩"
-	email := "example@example.com"
-	password := "securepassword"
-
-	result, err := xdb.Exec(sql, id, name, email, password)
+	result, err := repo.InsertUsers(xdb, user)
 	fmt.Printf("%+v\n", result)
 	if err != nil {
-		slog.Error(err.Error())
-		return
+		return err
 	}
-}
 
-// func insertUsers() {
-// }
+	rowsAffected, _ := result.RowsAffected()
+	return c.String(http.StatusOK, fmt.Sprintf("ユーザーが作成されました。作成した数: %d", rowsAffected))
+}
