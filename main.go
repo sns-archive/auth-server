@@ -33,95 +33,14 @@ func main() {
 
 	e := echo.New()
 	e.GET("/", handleHello)
-	// e.POST("/users", func(c echo.Context) error {
-	// 	return createUserHandler(c, xdb)
-	// })
-
-	// DIをする場合
-	repo := NewRepo()
-	createUserUsecase := NewCreateUserUseCase(xdb, repo)
-	createUserHandler := NewCreateUserHandler(createUserUsecase)
-	e.POST("/users", createUserHandler.ServeHTTP)
-
+	e.POST("/users", func(c echo.Context) error {
+		return createUserHandler(c, xdb)
+	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
 func handleHello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
-}
-
-// ********************
-// usecase層
-// ********************
-type CreateUserUsecaseImpl struct {
-	DB   *sqlx.DB // interfaceに依存する
-	Repo Repositorier
-}
-
-func NewCreateUserUseCase(db *sqlx.DB, repo Repositorier) CreateUserUseCaseier {
-	return &CreateUserUsecaseImpl{
-		DB:   db,
-		Repo: repo,
-	}
-}
-
-func (cu *CreateUserUsecaseImpl) CreateUser(ctx echo.Context) error {
-	_, err := cu.Repo.insertUsers(cu.DB, User{
-		id:       uuid.New(),
-		name:     "うんち💩",
-		email:    "hoge@tintin.com",
-		password: "securepassword",
-	})
-	if err != nil {
-		return err
-	}
-	fmt.Println("ユーザーが作成されました")
-	return nil
-}
-
-// *******************
-// handler層
-// *******************
-type CreateUserUseCaseier interface {
-	CreateUser(ctx echo.Context) error
-}
-type CreateUser struct {
-	UseCase CreateUserUseCaseier
-}
-
-func NewCreateUserHandler(s CreateUserUseCaseier) *CreateUser {
-	return &CreateUser{UseCase: s}
-}
-
-func (cu *CreateUser) ServeHTTP(ctx echo.Context) error {
-	if err := cu.UseCase.CreateUser(ctx); err != nil {
-		return err
-	}
-	return nil
-}
-
-// ******************
-// repository層
-// ******************
-type Repositorier interface {
-	insertUsers(db *sqlx.DB, user User) (sql.Result, error)
-}
-
-type Repo struct{}
-
-func NewRepo() Repositorier {
-	return &Repo{}
-}
-
-func (r *Repo) insertUsers(db *sqlx.DB, user User) (sql.Result, error) {
-	sql := `INSERT INTO users (id, username, email, password)
-					VALUES
-					(UUID_TO_BIN(?, 1), ?, ?, ?)
-					ON DUPLICATE KEY UPDATE
-					username = VALUES(username),
-					email = VALUES(email),
-					password = VALUES(password);`
-	return db.Exec(sql, user.id, user.name, user.email, user.password)
 }
 
 func createUserHandler(c echo.Context, xdb *sqlx.DB) error {
