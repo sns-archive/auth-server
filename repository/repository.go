@@ -20,10 +20,12 @@ func ConnectDB(ctx context.Context) (*sqlx.DB, func(), error) {
 		Net:                  "tcp",
 		AllowNativePasswords: true,
 	}
+
 	xdb, err := sqlx.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot open db: %w", err)
 	}
+
 	// 接続確認するため
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	// Timeoutタイマーを終了する
@@ -31,6 +33,7 @@ func ConnectDB(ctx context.Context) (*sqlx.DB, func(), error) {
 	if err := xdb.PingContext(ctx); err != nil {
 		return nil, nil, fmt.Errorf("cannot ping: %w", err)
 	}
+
 	// NOTE: goでは、慣習的に使用しない返り値は「_」に格納する必要がある。
 	return xdb, func() { _ = xdb.Close() }, nil
 }

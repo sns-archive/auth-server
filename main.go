@@ -22,10 +22,11 @@ func main() {
 	}
 	defer cleanup()
 
+	repo := repository.NewRepo()
 	e := echo.New()
 	e.GET("/", handleHello)
 	e.POST("/users", func(c echo.Context) error {
-		return createUserHandler(c, xdb)
+		return createUserHandler(c, xdb, repo)
 	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
@@ -34,7 +35,7 @@ func handleHello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
 }
 
-func createUserHandler(c echo.Context, xdb *sqlx.DB) error {
+func createUserHandler(c echo.Context, xdb *sqlx.DB, repo repository.Repositorier) error {
 	uuid, err := uuid.NewV7()
 	if err != nil {
 		return err
@@ -48,7 +49,7 @@ func createUserHandler(c echo.Context, xdb *sqlx.DB) error {
 		Password: "securepassword",
 	}
 
-	result, err := repository.NewRepo().InsertUsers(xdb, user)
+	result, err := repo.InsertUsers(xdb, user)
 	fmt.Printf("%+v\n", result)
 	if err != nil {
 		return err
